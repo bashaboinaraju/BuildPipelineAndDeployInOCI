@@ -33,7 +33,7 @@ jobs:
           -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_USERNAME }}" \
           --password-stdin
 
-      # 5. Build Docker image (uses your Dockerfile)
+      # 5. Build Docker image(uses your Dockerfile)
       - name: Build Docker Image
         run: |
           docker build -t \
