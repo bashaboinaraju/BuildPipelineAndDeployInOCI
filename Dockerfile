@@ -4,4 +4,4 @@ WORKDIR /app
 
 COPY target/Pipeline-1.0-SNAPSHOT.jar app.jar
 
-ENTRYPOINT ["sh", "-c", "java -jar app.jar && tail -f /dev/null"]
+CMD ["sh", "-c", "echo 'Starting app'; java -jar app.jar; echo 'Keeping container alive'; sleep infinity"]
