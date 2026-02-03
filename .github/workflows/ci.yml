@@ -75,7 +75,7 @@ jobs:
           echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
           chmod 600 ~/.oci/oci_api_key.pem
 
-      # --------------------------------
+      # -------------------------------
       # 9. Delete existing Container Instance (if exists)
       # --------------------------------
       - name: Delete existing Container Instance
