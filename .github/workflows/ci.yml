@@ -9,6 +9,10 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: "True"
+      SUPPRESS_LABEL_WARNING: "True"
+
     steps:
       # --------------------------------
       # 1. Checkout source code
@@ -67,7 +71,7 @@ jobs:
           echo "$HOME/bin" >> $GITHUB_PATH
 
       # --------------------------------
-      # 8. Configure OCI CLI (FIXED – IMPORTANT)
+      # 8. Configure OCI CLI (CRITICAL FIX)
       # --------------------------------
       - name: Configure OCI CLI
         run: |
@@ -96,22 +100,34 @@ jobs:
             --force
 
       # --------------------------------
-      # 11. Create new OCI Container Instance
+      # 11. Create OCI Container Instance (JSON FIX APPLIED)
       # --------------------------------
       - name: Create Container Instance
         run: |
+          cat > vnics.json <<EOF
+          [
+            {
+              "subnetId": "${{ secrets.OCI_SUBNET_OCID }}",
+              "assignPublicIp": true
+            }
+          ]
+          EOF
+
+          cat > containers.json <<EOF
+          [
+            {
+              "displayName": "pipeline",
+              "imageUrl": "${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/pipeline:latest",
+              "restartPolicy": "ALWAYS"
+            }
+          ]
+          EOF
+
           oci container-instances container-instance create \
             --compartment-id ${{ secrets.OCI_COMPARTMENT_OCID }} \
             --display-name pipeline-container-instance \
             --shape CI.Standard.E4.Flex \
             --shape-config '{"ocpus": 0.25, "memoryInGBs": 1}' \
             --availability-domain ${{ secrets.OCI_AD }} \
-            --vnics '[{
-              "subnetId": "'"${{ secrets.OCI_SUBNET_OCID }}"'",
-              "assignPublicIp": true
-            }]' \
-            --containers '[{
-              "displayName": "pipeline",
-              "imageUrl": "'"${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/pipeline:latest"'",
-              "restartPolicy": "ALWAYS"
-            }]'
+            --vnics file://vnics.json \
+            --containers file://containers.json
