@@ -53,7 +53,7 @@ jobs:
           docker build -t \
           ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/pipeline:latest .
 
-      # -------------------------------
+      # --------------------------------
       # 6. Push Docker image to OCIR
       # --------------------------------
       - name: Push Docker Image
