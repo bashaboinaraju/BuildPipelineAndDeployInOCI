@@ -1,4 +1,4 @@
-name: Build Java App and Push Docker Image to OCIR
+name: Build Java App, Push Image to OCIR and Deploy to OCI Container Instance
 
 on:
   push:
@@ -6,26 +6,34 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # --------------------------------
       # 1. Checkout source code
+      # --------------------------------
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # 2. Setup Java 17 (matches pom.xml + Dockerfile)
+      # --------------------------------
+      # 2. Setup Java 17
+      # --------------------------------
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. Build executable JAR using Maven
+      # --------------------------------
+      # 3. Build executable JAR
+      # --------------------------------
       - name: Build JAR
         run: mvn clean package
 
-      # 4. Login to OCI Container Registry [OCIR]
+      # --------------------------------
+      # 4. Login to OCI Container Registry (OCIR)
+      # --------------------------------
       - name: Login to OCIR
         run: |
           echo "${{ secrets.OCI_AUTH_TOKEN }}" | docker login \
@@ -33,14 +41,67 @@ jobs:
           -u "${{ secrets.OCI_TENANCY_NAMESPACE }}/${{ secrets.OCI_USERNAME }}" \
           --password-stdin
 
-      # 5. Build Docker image(uses your Dockerfile)
+      # --------------------------------
+      # 5. Build Docker image
+      # --------------------------------
       - name: Build Docker Image
         run: |
           docker build -t \
           ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/pipeline:latest .
 
+      # --------------------------------
       # 6. Push Docker image to OCIR
+      # --------------------------------
       - name: Push Docker Image
         run: |
           docker push \
           ${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/pipeline:latest
+
+      # --------------------------------
+      # 7. Install OCI CLI
+      # --------------------------------
+      - name: Install OCI CLI
+        run: |
+          curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh | bash -s -- --accept-all-defaults
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      # --------------------------------
+      # 8. Configure OCI CLI
+      # --------------------------------
+      - name: Configure OCI CLI
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
+          echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+
+      # --------------------------------
+      # 9. Delete existing Container Instance (if exists)
+      # --------------------------------
+      - name: Delete existing Container Instance
+        continue-on-error: true
+        run: |
+          oci container-instances container-instance delete \
+            --container-instance-id ${{ secrets.CONTAINER_INSTANCE_OCID }} \
+            --force
+
+      # --------------------------------
+      # 10. Create new Container Instance
+      # --------------------------------
+      - name: Create Container Instance
+        run: |
+          oci container-instances container-instance create \
+            --compartment-id ${{ secrets.OCI_COMPARTMENT_OCID }} \
+            --display-name pipeline-container-instance \
+            --shape CI.Standard.E4.Flex \
+            --shape-config '{"ocpus": 0.25, "memoryInGBs": 1}' \
+            --availability-domain ${{ secrets.OCI_AD }} \
+            --vnics '[{
+              "subnetId": "'"${{ secrets.OCI_SUBNET_OCID }}"'",
+              "assignPublicIp": true
+            }]' \
+            --containers '[{
+              "displayName": "pipeline",
+              "imageUrl": "'"${{ secrets.OCI_REGION }}.ocir.io/${{ secrets.OCI_TENANCY_NAMESPACE }}/pipeline:latest"'",
+              "restartPolicy": "ALWAYS"
+            }]'
