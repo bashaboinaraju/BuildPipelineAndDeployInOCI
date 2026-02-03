@@ -128,5 +128,6 @@ jobs:
             --display-name pipeline-container-instance \
             --shape CI.Standard.E4.Flex \
             --shape-config '{"ocpus": 0.25, "memoryInGBs": 1}' \
+            --availability-domain ${{ secrets.OCI_AD }} \
             --vnics file://vnics.json \
             --containers file://containers.json
