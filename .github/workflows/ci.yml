@@ -1,4 +1,4 @@
-name: Build Java App, Push Image to OCIR and Deploy to OCI Container Instance
+name: Build Java App, Push Docker Image to OCIR and Deploy to OCI Container Instance
 
 on:
   push:
@@ -62,21 +62,31 @@ jobs:
       # --------------------------------
       - name: Install OCI CLI
         run: |
-          curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh | bash -s -- --accept-all-defaults
+          curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh \
+          | bash -s -- --accept-all-defaults
           echo "$HOME/bin" >> $GITHUB_PATH
 
       # --------------------------------
-      # 8. Configure OCI CLI
+      # 8. Configure OCI CLI (FIXED – IMPORTANT)
       # --------------------------------
       - name: Configure OCI CLI
         run: |
-          mkdir -p ~/.oci
-          echo "${{ secrets.OCI_CONFIG }}" > ~/.oci/config
-          echo "${{ secrets.OCI_API_KEY }}" > ~/.oci/oci_api_key.pem
-          chmod 600 ~/.oci/oci_api_key.pem
+          mkdir -p /home/runner/.oci
 
-      # -------------------------------
-      # 9. Delete existing Container Instance (if exists)
+          echo "${{ secrets.OCI_CONFIG }}" > /home/runner/.oci/config
+          echo "${{ secrets.OCI_API_KEY }}" > /home/runner/.oci/oci_api_key.pem
+
+          chmod 600 /home/runner/.oci/oci_api_key.pem
+
+      # --------------------------------
+      # 9. Verify OCI CLI authentication
+      # --------------------------------
+      - name: Verify OCI CLI
+        run: |
+          oci iam region list
+
+      # --------------------------------
+      # 10. Delete existing Container Instance (OPTIONAL)
       # --------------------------------
       - name: Delete existing Container Instance
         continue-on-error: true
@@ -86,7 +96,7 @@ jobs:
             --force
 
       # --------------------------------
-      # 10. Create new Container Instance
+      # 11. Create new OCI Container Instance
       # --------------------------------
       - name: Create Container Instance
         run: |
