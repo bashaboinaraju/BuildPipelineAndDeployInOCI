@@ -1,5 +1,3 @@
-FROM eclipse-temurin:21-jre-alpine
-
-WORKDIR /app
-COPY target/Pipeline-1.0-SNAPSHOT.jar app.jar
-ENTRYPOINT ["java","-jar","app.jar"]
+FROM openjdk:22-jdk
+ADD target/rest-demo.jar raju.jar
+ENTRYPOINT ["java","-jar","raju.jar"]
