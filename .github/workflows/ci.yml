@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -17,6 +17,12 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+
+      - name: Build JAR with Maven
+        run: mvn clean package
+
+#      - name: Verify JAR exists
+#        run: ls -lh target/
 
       - name: Login to OCIR
         run: |
